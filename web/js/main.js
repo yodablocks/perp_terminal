@@ -15,6 +15,7 @@ const PROFILE_MS = 60000;
 let token    = "BTC";
 let interval = "1h";
 let lastSnap = null;
+let prevFlips = new Set();
 
 // ── venue strip ────────────────────────────────────────────
 
@@ -53,12 +54,29 @@ async function tickCandles() {
   }
 }
 
+// ── funding flip notifications ─────────────────────────────
+
+function notifyNewFlips(flips, snapToken) {
+  if (Notification.permission !== "granted") return;
+  for (const venue of flips) {
+    if (!prevFlips.has(venue)) {
+      new Notification("Funding flip: " + venue, {
+        body: "Rate crossed zero on " + venue + " · " + snapToken,
+        silent: true,
+      });
+    }
+  }
+}
+
 // ── snapshot update ────────────────────────────────────────
 
 async function tickSnapshot() {
   try {
     const snap = await getSnapshot(token);
     lastSnap = snap;
+    const currentFlips = new Set(snap.funding_flips);
+    notifyNewFlips(currentFlips, snap.token);
+    prevFlips = currentFlips;
     renderVenueStrip(snap.venues);
     renderFunding(snap.funding, snap.funding_flips);
     renderOI(snap.oi);
@@ -78,6 +96,7 @@ async function tickSnapshot() {
 function setToken(next) {
   if (next === token) return;
   token = next;
+  prevFlips = new Set();
   document.querySelectorAll("#token-tabs button")
     .forEach(b => b.classList.toggle("active", b.dataset.token === token));
   tickSnapshot();
@@ -95,6 +114,10 @@ function setInterval_(next) {
 // ── init ───────────────────────────────────────────────────
 
 function main() {
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+
   initChart();
   initProfile();
   initSlippage(() => lastSnap && renderSlippage(lastSnap.slippage));
