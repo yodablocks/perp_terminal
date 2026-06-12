@@ -65,6 +65,7 @@ class Poller:
             cls.VENUE: VenueState(venue=cls.VENUE) for cls in fetcher_classes
         }
         self.liquidations: deque[Liquidation] = deque(maxlen=liq_buffer)
+        self._seen_tids: set[int] = set()
 
         self._clients: list[PerpDEXClient] = []
         self._tasks: list[asyncio.Task] = []
@@ -101,6 +102,7 @@ class Poller:
             return
         self.token = token
         self.liquidations.clear()
+        self._seen_tids.clear()
         for venue in self.states:
             self.states[venue] = VenueState(venue=venue)
 
@@ -163,7 +165,10 @@ class Poller:
                     token, lookback_seconds=self.liq_tail_seconds
                 )
                 if token == self.token:
-                    self.liquidations.extend(events)
+                    for ev in events:
+                        if ev.tid not in self._seen_tids:
+                            self._seen_tids.add(ev.tid)
+                            self.liquidations.extend(events)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:

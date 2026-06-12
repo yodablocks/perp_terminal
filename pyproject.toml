@@ -9,7 +9,7 @@ description = "Read-only cross-venue market terminal for 8 perp DEXes. Public da
 requires-python = ">=3.12"
 dependencies = [
     # TODO: switch to @v0.1.0 once the tag exists on perp-liquidity
-    "perp-liquidity @ git+https://github.com/yodablocks/perp-liquidity@v0.1.0",
+    "perp-liquidity @ git+https://github.com/yodablocks/perp-liquidity@326979b723ac87ccbdc29e50b91e6167dbc9087e",
     "fastapi>=0.115",
     "uvicorn>=0.34",
 ]
