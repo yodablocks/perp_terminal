@@ -63,10 +63,34 @@ def create_app(
         liq_tail_seconds=liq_tail_seconds,
     )
 
+    PROFILE_TOKENS = ("BTC", "ETH", "SOL")
+
+    async def _fetch_one_profile(tok: str) -> None:
+        hl_state = poller.states.get("hyperliquid")
+        mark_price = hl_state.oi.mark_price if (hl_state and hl_state.oi) else None
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                p = await fetch_market_profile(tok, mark_price=mark_price, client=client)
+            result = profile_dict(p)
+            async with _profile_lock:
+                _profile_cache[tok] = (time.monotonic(), result)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            pass  # one token failing must not affect the others
+
+    async def _profile_refresh_loop() -> None:
+        while True:
+            await asyncio.gather(*(_fetch_one_profile(tok) for tok in PROFILE_TOKENS))
+            await asyncio.sleep(PROFILE_TTL)
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         await poller.start()
+        profile_task = asyncio.create_task(_profile_refresh_loop())
         yield
+        profile_task.cancel()
+        await asyncio.gather(profile_task, return_exceptions=True)
         await poller.stop()
 
     app = FastAPI(title="perp-terminal", lifespan=lifespan)
