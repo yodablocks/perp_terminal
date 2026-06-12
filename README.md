@@ -2,7 +2,7 @@
 
 Read-only market terminal across 8 perpetual DEXes: Hyperliquid, Paradex, Lighter, Aster, Extended, EdgeX, ApeX, GRVT.
 
-One screen: cross-venue book depth, funding APR with flip detection, open interest share, walked-book slippage across clip sizes, and a live liquidation tape from the venues that expose one publicly.
+One screen: candlestick chart with market profile overlay, cross-venue funding APR with flip detection, open interest share, walked-book slippage across clip sizes, an execution router (best venue by net cost), and a live liquidation tape from the venues that expose one publicly.
 
 Built on [perp-liquidity](https://github.com/yodablocks/perp-liquidity), which provides the 8 venue fetchers and the analyzers. This repo adds a polling service, a snapshot API, and a web UI. Public APIs only. No keys, no execution, no signals.
 
@@ -21,28 +21,46 @@ The frontend has no build step. Native ES modules served straight from `web/`. C
 
 ```
 src/perp_terminal/
-├── poller.py      # one long-lived client per venue, one market task per venue,
-│                  # one WS tail task per venue that exposes liquidations
-├── server.py      # FastAPI: GET /api/snapshot, GET /api/health, static mount
-└── serialize.py   # dataclasses -> JSON
+├── poller.py        # one long-lived client per venue, one market task per venue,
+│                    # one WS tail task per venue that exposes liquidations
+├── server.py        # FastAPI: /api/snapshot, /api/candles, /api/profile, /api/health,
+│                    # background profile refresh loop, static mount
+├── market_profile.py  # Hyperliquid candle fetch + TPO/value-area computation
+└── serialize.py     # dataclasses -> JSON
 
 web/
 ├── index.html
 ├── css/terminal.css
 └── js/
-    ├── main.js            # 2s refresh loop, token tabs, venue status strip
+    ├── main.js              # poll loop, token/interval tabs, venue strip,
+    │                        # browser notifications for funding flips
     ├── api.js
-    ├── panels/            # ladder (canvas), funding, oi, slippage, liqtape
+    ├── panels/
+    │   ├── chart.js         # candlestick chart + volume bars + hover tooltip (canvas)
+    │   ├── profile.js       # market profile histogram (canvas)
+    │   ├── funding.js       # funding APR table, scrollable
+    │   ├── oi.js            # open interest bar chart
+    │   ├── slippage.js      # slippage matrix
+    │   ├── router.js        # execution router (best venue by net cost)
+    │   └── liqtape.js       # liquidation tape
     └── lib/format.js
 ```
 
-The poller holds all venue state in memory. The server reads that state and computes rankings and slippage on request via perp-liquidity's pure analyzer functions. The browser polls `/api/snapshot` every 2 seconds.
+The poller holds all venue state in memory. The server reads that state and computes rankings and slippage on each `/api/snapshot` request via perp-liquidity's pure analyzer functions. Market profiles for BTC, ETH, and SOL are pre-fetched on startup and refreshed every 60s in a background task so `/api/profile` always returns from cache. The browser polls `/api/snapshot` every 3s and `/api/candles` every 15s.
 
-## Depth panel methodology
+## Panel notes
 
-Each venue row bins its book by basis-point offset from that venue's own mid (2 bps bins, ±50 bps window) and plots cumulative USD depth, bids leftward, asks rightward. Bar heights are normalized to the deepest venue at the window edge, so depth is comparable across rows. Spread in bps and total depth at ±50 bps are printed per row.
+**Chart**: candlestick OHLCV from Hyperliquid, 120 candles at the selected interval. Volume bars rendered below the price chart. Hover for a per-candle tooltip (O/H/L/C/V, UTC timestamp). Market profile overlay (POC, VAH, VAL, value area shading) computed from the same candles.
 
-Slippage walks the book against a mid-price reference at 1k / 10k / 100k / 500k USD clips, both sides. Funding is annualized using each venue's actual period (1h / 4h / 8h). Methodology details live in the perp-liquidity README.
+**Funding**: APR annualised using each venue's actual period (1h / 4h / 8h). `FLIP` badge marks venues where the rate crossed zero since the last poll. Browser notifications fire on new flips (requires permission).
+
+**OI**: USD open interest ranked by share. Bar widths normalised to the largest venue.
+
+**Slippage / Execution router**: walks the live order book against a mid-price reference at 1k / 10k / 100k / 500k USD clips, both sides. The router picks the lowest net-cost venue for a given clip and side.
+
+**Liquidation tape**: cross-venue stream, long/short, USD size, age. Summary bar shows total liquidated USD over the window.
+
+Depth panel methodology and funding/slippage details live in the [perp-liquidity README](https://github.com/yodablocks/perp-liquidity).
 
 ## Coverage and honesty
 
