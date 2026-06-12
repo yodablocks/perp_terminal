@@ -1,5 +1,7 @@
 # perp-terminal
 
+![perp-terminal v0.1.0](asset/docs/perp_terminal.v.0.1.0.png)
+
 Read-only market terminal across 8 perpetual DEXes: Hyperliquid, Paradex, Lighter, Aster, Extended, EdgeX, ApeX, GRVT.
 
 One screen: candlestick chart with market profile overlay, cross-venue funding APR with flip detection, open interest share, walked-book slippage across clip sizes, an execution router (best venue by net cost), and a live liquidation tape from the venues that expose one publicly.
