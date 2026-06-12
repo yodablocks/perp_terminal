@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>perp-terminal</title>
+<link rel="stylesheet" href="/css/terminal.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wordmark">PERP<span>/</span>TERMINAL</div>
+  <nav class="tokens" id="token-tabs">
+    <button data-token="BTC" class="active">BTC</button>
+    <button data-token="ETH">ETH</button>
+    <button data-token="SOL">SOL</button>
+  </nav>
+  <nav class="intervals" id="interval-tabs">
+    <button data-interval="1m">1m</button>
+    <button data-interval="5m">5m</button>
+    <button data-interval="15m">15m</button>
+    <button data-interval="1h" class="active">1h</button>
+    <button data-interval="4h">4h</button>
+    <button data-interval="1d">1d</button>
+  </nav>
+  <div class="venue-strip" id="venue-strip"></div>
+</header>
+
+<main class="grid">
+
+  <!-- chart + market profile side by side -->
+  <section class="panel panel-chart">
+    <h2 id="chart-title">HYPERLIQUID · BTC <span class="sub">market profile + price (1h)</span></h2>
+    <div class="chart-wrap">
+      <canvas id="chart-canvas"></canvas>
+      <canvas id="profile-canvas"></canvas>
+    </div>
+  </section>
+
+  <!-- right column: execution router + data panels stacked -->
+  <div class="col-right">
+
+    <section class="panel panel-router">
+      <h2>EXECUTION ROUTER <span class="sub">read-only · best venue by net cost</span></h2>
+      <div class="router-body">
+        <div class="router-input">
+          <label>CLIP SIZE (USD)</label>
+          <div class="clip-row" id="clip-row">
+            <button data-clip="1000"   class="active">1K</button>
+            <button data-clip="10000">10K</button>
+            <button data-clip="100000">100K</button>
+            <button data-clip="500000">500K</button>
+          </div>
+          <div class="side-row">
+            <button data-side="buy" id="router-buy" class="active">BUY</button>
+            <button data-side="sell" id="router-sell">SELL</button>
+          </div>
+        </div>
+        <div id="router-result"></div>
+        <div class="router-note">Slippage computed from live order books. No execution.</div>
+      </div>
+    </section>
+
+    <section class="panel panel-funding">
+      <h2>FUNDING <span class="sub">APR · rank 1 = most negative</span></h2>
+      <div id="funding-table"></div>
+    </section>
+
+    <section class="panel panel-oi">
+      <h2>OPEN INTEREST <span class="sub">USD share</span></h2>
+      <div id="oi-bars"></div>
+    </section>
+
+  </div>
+
+  <!-- bottom: slippage matrix + liq tape -->
+  <section class="panel panel-slippage">
+    <h2>SLIPPAGE
+      <span class="sub">bps vs mid · walked book</span>
+      <span class="side-toggle" id="side-toggle">
+        <button data-side="buy" class="active">BUY</button><button data-side="sell">SELL</button>
+      </span>
+    </h2>
+    <div id="slippage-matrix"></div>
+  </section>
+
+  <section class="panel panel-liq">
+    <h2>LIQUIDATIONS <span class="sub" id="liq-coverage"></span></h2>
+    <div id="liq-summary"></div>
+    <div id="liq-tape"></div>
+  </section>
+
+</main>
+
+<footer class="statusbar">
+  <span>public APIs only · read-only · no execution</span>
+  <span id="generated-at"></span>
+</footer>
+
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>
